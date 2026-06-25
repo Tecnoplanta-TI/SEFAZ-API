@@ -1,10 +1,27 @@
-import awsLambdaFastify from '@fastify/aws-lambda';
-import { buildApp } from '../dist/app.js';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { FastifyInstance } from 'fastify';
+import { buildApp } from '../src/app.js';
 
-const app = await buildApp();
-await app.ready();
+let appPromise: Promise<FastifyInstance> | undefined;
 
-export default awsLambdaFastify(app);
+function getApp(): Promise<FastifyInstance> {
+  if (!appPromise) {
+    appPromise = buildApp().then(async (app) => {
+      await app.ready();
+      return app;
+    });
+  }
+
+  return appPromise;
+}
+
+export default async function handler(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const app = await getApp();
+  app.server.emit('request', req, res);
+}
 
 export const config = {
   maxDuration: 60,
