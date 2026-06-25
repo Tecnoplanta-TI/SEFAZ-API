@@ -1,0 +1,32 @@
+{
+  "name": "sefaz-nfe-api",
+  "version": "1.0.0",
+  "description": "API Node.js para consulta de NF-e na SEFAZ",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "vercel-build": "npm run build",
+    "test": "tsx --test test/**/*.test.ts",
+    "test:homolog": "tsx scripts/test-homolog.ts"
+  },
+  "keywords": [
+    "sefaz",
+    "nfe",
+    "dfe"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/aws-lambda": "^6.4.0",
+    "@vexta-systems/node-mde": "^0.15.7",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
