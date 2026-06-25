@@ -7,7 +7,8 @@ describe('POST /nfe/consulta', () => {
 
   before(async () => {
     app = await buildApp({
-      consultarNfe: async () => '<nfeProc>xml</nfeProc>',
+      consultarNfe: async () =>
+        '<nfeProc><ide><dhEmi>2022-12-31T10:00:00-03:00</dhEmi></ide></nfeProc>',
     });
   });
 
@@ -41,10 +42,12 @@ describe('POST /nfe/consulta', () => {
       status: string;
       chave: string;
       xml: string;
+      xmlPostingDate: string | null;
     }>();
 
     assert.equal(body.status, 'ok');
     assert.equal(body.chave, chave);
-    assert.equal(body.xml, '<nfeProc>xml</nfeProc>');
+    assert.match(body.xml, /dhEmi/);
+    assert.equal(body.xmlPostingDate, '31/12/2022');
   });
 });

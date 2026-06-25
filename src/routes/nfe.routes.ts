@@ -6,6 +6,7 @@ import {
 } from '../services/sefaz.service.js';
 import type { TipoEventoManifestacao } from '../config/sefaz-client.js';
 import { normalizarChaveNfe, validarChaveNfe } from '../utils/chave.js';
+import { extrairXmlPostingDate } from '../utils/xml-nfe.js';
 
 type ConsultaBody = {
   chave: string;
@@ -66,11 +67,13 @@ export async function nfeRoutes(
 
     try {
       const xml = await consultar(chaveValidada);
+      const xmlPostingDate = extrairXmlPostingDate(xml) ?? null;
 
       return reply.send({
         status: 'ok',
         chave: chaveValidada,
         xml,
+        xmlPostingDate,
       });
     } catch (error) {
       if (error instanceof SefazApiError) {
