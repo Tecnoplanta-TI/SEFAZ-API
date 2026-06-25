@@ -1,4 +1,5 @@
 {
+  "buildCommand": "echo \"Vercel compila api/index.ts automaticamente\"",
   "installCommand": "npm install --include=dev",
   "rewrites": [
     {
