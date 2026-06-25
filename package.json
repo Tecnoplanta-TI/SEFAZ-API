@@ -18,6 +18,9 @@
     "dfe"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@fastify/aws-lambda": "^6.4.0",
     "@vexta-systems/node-mde": "^0.15.7",
