@@ -10,13 +10,41 @@ export class SefazApiError extends Error {
   }
 }
 
+export type TipoDocumentoDistribuicao = 'nfe' | 'cte';
+
+const DOCUMENTO_CONFIG: Record<
+  TipoDocumentoDistribuicao,
+  {
+    resumoPrefix: string;
+    procPrefix: string;
+    resumoCode: string;
+    label: string;
+  }
+> = {
+  nfe: {
+    resumoPrefix: 'resNFe',
+    procPrefix: 'procNFe',
+    resumoCode: 'RESUMO_NFE',
+    label: 'NF-e',
+  },
+  cte: {
+    resumoPrefix: 'resCTe',
+    procPrefix: 'procCTe',
+    resumoCode: 'RESUMO_CTE',
+    label: 'CT-e',
+  },
+};
+
 export function mapSefazResult(params: {
   cStat?: string;
   xMotivo?: string;
   schema?: string;
   xml?: string;
+  tipoDocumento?: TipoDocumentoDistribuicao;
 }): { xml: string } {
   const { cStat, xMotivo, schema, xml } = params;
+  const tipoDocumento = params.tipoDocumento ?? 'nfe';
+  const config = DOCUMENTO_CONFIG[tipoDocumento];
 
   if (cStat === '656') {
     throw new SefazApiError(
@@ -54,16 +82,16 @@ export function mapSefazResult(params: {
     );
   }
 
-  if (schema.startsWith('resNFe')) {
+  if (schema.startsWith(config.resumoPrefix)) {
     throw new SefazApiError(
-      'A SEFAZ retornou apenas o resumo da NF-e. Manifeste a nota para liberar o XML completo.',
+      `A SEFAZ retornou apenas o resumo da ${config.label}.`,
       422,
-      'RESUMO_NFE',
+      config.resumoCode,
       { cStat, schema },
     );
   }
 
-  if (!schema.startsWith('procNFe')) {
+  if (!schema.startsWith(config.procPrefix)) {
     throw new SefazApiError(
       `Tipo de documento não suportado: ${schema}`,
       502,

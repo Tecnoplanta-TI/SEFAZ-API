@@ -76,6 +76,7 @@ function extrairXmlProcNfe(
     xMotivo,
     schema: doc?.schema,
     xml: doc?.xml,
+    tipoDocumento: 'nfe',
   }).xml;
 }
 
@@ -96,7 +97,7 @@ async function consultarDistribuicao(
     const { cStat, xMotivo } = resultado.data ?? {};
 
     if (cStat && cStat !== '138') {
-      mapSefazResult({ cStat, xMotivo });
+      mapSefazResult({ cStat, xMotivo, tipoDocumento: 'nfe' });
     }
 
     return resultado;

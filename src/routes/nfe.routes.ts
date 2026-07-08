@@ -5,7 +5,11 @@ import {
   manifestarNfe,
 } from '../services/sefaz.service.js';
 import type { TipoEventoManifestacao } from '../config/sefaz-client.js';
-import { normalizarChaveNfe, validarChaveNfe } from '../utils/chave.js';
+import {
+  normalizarChaveNfe,
+  obterModeloChave,
+  validarChaveDocumento,
+} from '../utils/chave.js';
 import { extrairXmlPostingDate } from '../utils/xml-nfe.js';
 
 type ConsultaBody = {
@@ -34,13 +38,26 @@ function validarChaveRequest(chave: unknown): string | { error: string } {
 
   const chaveNormalizada = normalizarChaveNfe(chave);
 
-  if (!validarChaveNfe(chaveNormalizada)) {
+  if (!validarChaveDocumento(chaveNormalizada, '55')) {
     const tamanho = chaveNormalizada.length;
+    const modelo = obterModeloChave(chaveNormalizada);
+
+    if (tamanho !== 44) {
+      return {
+        error: `Chave com tamanho incorreto (${tamanho} dígitos). Informe 44 dígitos numéricos.`,
+      };
+    }
+
+    if (modelo === '57') {
+      return {
+        error: 'Chave de CT-e (modelo 57). Use o endpoint POST /cte/consulta.',
+      };
+    }
 
     return {
       error:
-        tamanho !== 44
-          ? `Chave com tamanho incorreto (${tamanho} dígitos). Informe 44 dígitos numéricos.`
+        modelo !== '55'
+          ? `Chave de NF-e inválida (modelo ${modelo}). O modelo esperado é 55.`
           : 'Chave de acesso inválida. Verifique o dígito verificador.',
     };
   }

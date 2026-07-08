@@ -4,6 +4,10 @@ export function normalizarChaveNfe(chave: string): string {
   return chave.replace(/\D/g, '');
 }
 
+export function obterModeloChave(chave: string): string {
+  return normalizarChaveNfe(chave).slice(20, 22);
+}
+
 export function validarChaveNfe(chave: string): boolean {
   const chaveNormalizada = normalizarChaveNfe(chave);
 
@@ -27,4 +31,15 @@ export function validarChaveNfe(chave: string): boolean {
   const dvCalculado = resto < 2 ? 0 : 11 - resto;
 
   return dvCalculado === dvInformado;
+}
+
+export function validarChaveDocumento(
+  chave: string,
+  modelo: '55' | '57',
+): boolean {
+  if (!validarChaveNfe(chave)) {
+    return false;
+  }
+
+  return obterModeloChave(chave) === modelo;
 }
