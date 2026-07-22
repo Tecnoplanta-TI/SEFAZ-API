@@ -25,7 +25,8 @@ export function resolverCnpjRequest(
   }
 
   try {
-    return getTenant(cnpjNormalizado).cnpj;
+    getTenant(cnpjNormalizado);
+    return cnpjNormalizado;
   } catch (error) {
     return {
       error:

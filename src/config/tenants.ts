@@ -24,6 +24,11 @@ export function normalizarCnpj(cnpj: string): string {
   return cnpj.replace(/\D/g, '');
 }
 
+/** CNPJ base = 8 primeiros dígitos (raiz da empresa). */
+export function obterBaseCnpj(cnpj: string): string {
+  return normalizarCnpj(cnpj).slice(0, 8);
+}
+
 export function validarCnpj(cnpj: string): boolean {
   return CNPJ_REGEX.test(normalizarCnpj(cnpj));
 }
@@ -194,17 +199,27 @@ export function getTenant(cnpj?: string): SefazTenant {
 
   const cnpjNormalizado = cnpj ? normalizarCnpj(cnpj) : cachedDefaultCnpj!;
 
-  const tenant = cachedTenants!.get(cnpjNormalizado);
+  const exact = cachedTenants!.get(cnpjNormalizado);
+  if (exact) {
+    return exact;
+  }
 
-  if (!tenant) {
+  const base = obterBaseCnpj(cnpjNormalizado);
+  const porBase = [...cachedTenants!.values()].filter(
+    (tenant) => obterBaseCnpj(tenant.cnpj) === base,
+  );
+
+  if (porBase.length === 0) {
     throw new Error(
-      `CNPJ ${cnpjNormalizado} não configurado. CNPJs disponíveis: ${[
+      `CNPJ ${cnpjNormalizado} não configurado (base ${base}). CNPJs disponíveis: ${[
         ...cachedTenants!.keys(),
       ].join(', ')}.`,
     );
   }
 
-  return tenant;
+  // Prefere a matriz (ordem 0001) quando houver mais de um certificado na mesma base.
+  const matriz = porBase.find((tenant) => tenant.cnpj.slice(8, 12) === '0001');
+  return matriz ?? porBase[0]!;
 }
 
 /** Usado nos testes para limpar cache entre cenários. */

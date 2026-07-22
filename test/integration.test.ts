@@ -101,6 +101,23 @@ describe('POST /nfe/consulta', () => {
     assert.equal(ultimoCnpj, TENANT_B);
   });
 
+  it('aceita CNPJ de filial com mesma base do certificado', async () => {
+    const chave = '29260113873377000105550010000406211435401137';
+    const filial = '13873377000288';
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/nfe/consulta',
+      payload: { chave, cnpj: filial },
+    });
+
+    assert.equal(response.statusCode, 200);
+
+    const body = response.json<{ cnpj: string }>();
+    assert.equal(body.cnpj, filial);
+    assert.equal(ultimoCnpj, filial);
+  });
+
   it('retorna 400 para CNPJ não configurado', async () => {
     const response = await app.inject({
       method: 'POST',

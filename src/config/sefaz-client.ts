@@ -1,6 +1,11 @@
 import { loadCertBuffer } from './cert.js';
 import { getEnv } from './env.js';
-import { getTenant, type SefazTenant } from './tenants.js';
+import {
+  getDefaultCnpj,
+  getTenant,
+  normalizarCnpj,
+  type SefazTenant,
+} from './tenants.js';
 
 export type UfCode =
   | '11'
@@ -33,14 +38,19 @@ export type UfCode =
 
 export type TipoEventoManifestacao = 210200 | 210210 | 210220 | 210240;
 
+function resolveRequestedCnpj(cnpj?: string): string {
+  return cnpj ? normalizarCnpj(cnpj) : getDefaultCnpj();
+}
+
 export function getDistribuicaoConfig(cnpj?: string) {
   const env = getEnv();
-  const tenant: SefazTenant = getTenant(cnpj);
+  const requestedCnpj = resolveRequestedCnpj(cnpj);
+  const tenant: SefazTenant = getTenant(requestedCnpj);
 
   return {
     pfx: loadCertBuffer(tenant),
     passphrase: tenant.passphrase,
-    cnpj: tenant.cnpj,
+    cnpj: requestedCnpj,
     cUFAutor: tenant.cUFAutor as UfCode,
     tpAmb: env.TP_AMB,
   };
@@ -48,12 +58,13 @@ export function getDistribuicaoConfig(cnpj?: string) {
 
 export function getRecepcaoConfig(cnpj?: string) {
   const env = getEnv();
-  const tenant: SefazTenant = getTenant(cnpj);
+  const requestedCnpj = resolveRequestedCnpj(cnpj);
+  const tenant: SefazTenant = getTenant(requestedCnpj);
 
   return {
     pfx: loadCertBuffer(tenant),
     passphrase: tenant.passphrase,
-    cnpj: tenant.cnpj,
+    cnpj: requestedCnpj,
     tpAmb: env.TP_AMB,
     timezone: 'America/Sao_Paulo' as const,
   };

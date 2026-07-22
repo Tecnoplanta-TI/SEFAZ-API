@@ -56,6 +56,20 @@ describe('tenants config', () => {
     assert.equal(getTenant('10422537000101').passphrase, 'senha-emp');
   });
 
+  it('usa certificado da matriz para CNPJ de filial (mesma base)', () => {
+    delete process.env.SEFAZ_TENANTS;
+    process.env.TP_AMB = '1';
+    process.env.SEFAZ_CNPJ_LIST = '10422537000101';
+    process.env.DEFAULT_CNPJ = '10422537000101';
+    process.env.CERT_BASE64_10422537000101 = 'Yg==';
+    process.env.CERT_PASSPHRASE_10422537000101 = 'senha-emp';
+    process.env.CUF_AUTOR_10422537000101 = '43';
+
+    const filial = getTenant('10422537000527');
+    assert.equal(filial.cnpj, '10422537000101');
+    assert.equal(filial.passphrase, 'senha-emp');
+  });
+
   it('mantém compatibilidade com variáveis legadas', () => {
     delete process.env.SEFAZ_TENANTS;
     delete process.env.SEFAZ_CNPJ_LIST;
