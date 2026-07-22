@@ -1,5 +1,6 @@
 import { loadCertBuffer } from './cert.js';
 import { getEnv } from './env.js';
+import { getTenant, type SefazTenant } from './tenants.js';
 
 export type UfCode =
   | '11'
@@ -32,25 +33,27 @@ export type UfCode =
 
 export type TipoEventoManifestacao = 210200 | 210210 | 210220 | 210240;
 
-export function getDistribuicaoConfig() {
+export function getDistribuicaoConfig(cnpj?: string) {
   const env = getEnv();
+  const tenant: SefazTenant = getTenant(cnpj);
 
   return {
-    pfx: loadCertBuffer(),
-    passphrase: env.CERT_PASSPHRASE,
-    cnpj: env.CNPJ,
-    cUFAutor: env.CUF_AUTOR as UfCode,
+    pfx: loadCertBuffer(tenant),
+    passphrase: tenant.passphrase,
+    cnpj: tenant.cnpj,
+    cUFAutor: tenant.cUFAutor as UfCode,
     tpAmb: env.TP_AMB,
   };
 }
 
-export function getRecepcaoConfig() {
+export function getRecepcaoConfig(cnpj?: string) {
   const env = getEnv();
+  const tenant: SefazTenant = getTenant(cnpj);
 
   return {
-    pfx: loadCertBuffer(),
-    passphrase: env.CERT_PASSPHRASE,
-    cnpj: env.CNPJ,
+    pfx: loadCertBuffer(tenant),
+    passphrase: tenant.passphrase,
+    cnpj: tenant.cnpj,
     tpAmb: env.TP_AMB,
     timezone: 'America/Sao_Paulo' as const,
   };

@@ -1,5 +1,6 @@
 import { DistribuicaoCTe } from '@vexta-systems/node-mde';
 import { getDistribuicaoConfig } from '../config/sefaz-client.js';
+import { getDefaultCnpj, normalizarCnpj } from '../config/tenants.js';
 import { mapSefazResult, SefazApiError } from '../errors/sefaz-errors.js';
 import { extrairChaveCteDoXml } from '../utils/xml-cte.js';
 
@@ -16,11 +17,19 @@ type DistribuicaoResultado = Awaited<
 const NSU_INICIAL = '000000000000000';
 const MAX_ITERACOES_DISTRIBUICAO_CTE = 100;
 
-let distribuicaoCte: DistribuicaoCTe | undefined;
+const distribuicaoCtePorCnpj = new Map<string, DistribuicaoCTe>();
 
-function getDistribuicaoCte(): DistribuicaoCTe {
+function resolveCnpj(cnpj?: string): string {
+  return cnpj ? normalizarCnpj(cnpj) : getDefaultCnpj();
+}
+
+function getDistribuicaoCte(cnpj?: string): DistribuicaoCTe {
+  const cnpjResolvido = resolveCnpj(cnpj);
+  let distribuicaoCte = distribuicaoCtePorCnpj.get(cnpjResolvido);
+
   if (!distribuicaoCte) {
-    distribuicaoCte = new DistribuicaoCTe(getDistribuicaoConfig());
+    distribuicaoCte = new DistribuicaoCTe(getDistribuicaoConfig(cnpjResolvido));
+    distribuicaoCtePorCnpj.set(cnpjResolvido, distribuicaoCte);
   }
 
   return distribuicaoCte;
@@ -138,12 +147,15 @@ function buscarXmlCteNosDocumentos(
   return undefined;
 }
 
-export async function consultarCtePorChave(chave: string): Promise<string> {
+export async function consultarCtePorChave(
+  chave: string,
+  cnpj?: string,
+): Promise<string> {
   let ultNSU = NSU_INICIAL;
 
   for (let iteracao = 0; iteracao < MAX_ITERACOES_DISTRIBUICAO_CTE; iteracao += 1) {
     const resultado = await consultarDistribuicaoCte(() =>
-      getDistribuicaoCte().consultaUltNSU(ultNSU),
+      getDistribuicaoCte(cnpj).consultaUltNSU(ultNSU),
     );
 
     const { cStat, xMotivo } = resultado.data ?? {};

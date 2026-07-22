@@ -10,24 +10,28 @@ import {
   obterModeloChave,
   validarChaveDocumento,
 } from '../utils/chave.js';
+import { resolverCnpjRequest } from '../utils/cnpj-request.js';
 import { extrairXmlPostingDate } from '../utils/xml-nfe.js';
 
 type ConsultaBody = {
   chave: string;
+  cnpj?: string;
 };
 
 type ManifestarBody = {
   chave: string;
+  cnpj?: string;
   tipoEvento?: TipoEventoManifestacao;
   justificativa?: string;
 };
 
 type NfeRouteDeps = {
-  consultarNfe?: (chave: string) => Promise<string>;
+  consultarNfe?: (chave: string, cnpj?: string) => Promise<string>;
   manifestarNfe?: (
     chave: string,
     tipoEvento?: TipoEventoManifestacao,
     justificativa?: string,
+    cnpj?: string,
   ) => Promise<void>;
 };
 
@@ -82,13 +86,23 @@ export async function nfeRoutes(
       });
     }
 
+    const cnpjValidado = resolverCnpjRequest(request.body?.cnpj);
+
+    if (typeof cnpjValidado !== 'string') {
+      return reply.status(400).send({
+        status: 'error',
+        message: cnpjValidado.error,
+      });
+    }
+
     try {
-      const xml = await consultar(chaveValidada);
+      const xml = await consultar(chaveValidada, cnpjValidado);
       const xmlPostingDate = extrairXmlPostingDate(xml) ?? null;
 
       return reply.send({
         status: 'ok',
         chave: chaveValidada,
+        cnpj: cnpjValidado,
         xml,
         xmlPostingDate,
       });
@@ -123,14 +137,24 @@ export async function nfeRoutes(
         });
       }
 
+      const cnpjValidado = resolverCnpjRequest(request.body?.cnpj);
+
+      if (typeof cnpjValidado !== 'string') {
+        return reply.status(400).send({
+          status: 'error',
+          message: cnpjValidado.error,
+        });
+      }
+
       const { tipoEvento = 210210, justificativa } = request.body ?? {};
 
       try {
-        await manifestar(chaveValidada, tipoEvento, justificativa);
+        await manifestar(chaveValidada, tipoEvento, justificativa, cnpjValidado);
 
         return reply.send({
           status: 'ok',
           chave: chaveValidada,
+          cnpj: cnpjValidado,
           tipoEvento,
         });
       } catch (error) {

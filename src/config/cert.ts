@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import { getEnv } from './env.js';
+import type { SefazTenant } from './tenants.js';
 
 function decodeBase64(input: string): Buffer {
   return Buffer.from(input.replace(/\s+/g, ''), 'base64');
@@ -19,30 +19,32 @@ function looksLikeNestedBase64(buffer: Buffer): boolean {
   );
 }
 
-export function loadCertBuffer(): Buffer {
-  const env = getEnv();
-
-  if (env.CERT_BASE64) {
-    let buffer = decodeBase64(env.CERT_BASE64);
+export function loadCertBuffer(tenant: SefazTenant): Buffer {
+  if (tenant.certBase64) {
+    let buffer = decodeBase64(tenant.certBase64);
 
     if (looksLikeNestedBase64(buffer)) {
       buffer = decodeBase64(buffer.toString('utf8'));
     }
 
     if (!buffer.length) {
-      throw new Error('CERT_BASE64 está vazio ou inválido.');
+      throw new Error(
+        `Certificado base64 do CNPJ ${tenant.cnpj} está vazio ou inválido.`,
+      );
     }
 
     return buffer;
   }
 
-  if (!env.CERT_PATH) {
-    throw new Error('CERT_PATH não definido.');
+  if (!tenant.certPath) {
+    throw new Error(`CERT_PATH não definido para o CNPJ ${tenant.cnpj}.`);
   }
 
-  if (!fs.existsSync(env.CERT_PATH)) {
-    throw new Error(`Certificado não encontrado em: ${env.CERT_PATH}`);
+  if (!fs.existsSync(tenant.certPath)) {
+    throw new Error(
+      `Certificado não encontrado em: ${tenant.certPath} (CNPJ ${tenant.cnpj}).`,
+    );
   }
 
-  return fs.readFileSync(env.CERT_PATH);
+  return fs.readFileSync(tenant.certPath);
 }

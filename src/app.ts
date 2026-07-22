@@ -3,8 +3,8 @@ import { cteRoutes } from './routes/cte.routes.js';
 import { nfeRoutes } from './routes/nfe.routes.js';
 
 type BuildAppOptions = {
-  consultarNfe?: (chave: string) => Promise<string>;
-  consultarCte?: (chave: string) => Promise<string>;
+  consultarNfe?: (chave: string, cnpj?: string) => Promise<string>;
+  consultarCte?: (chave: string, cnpj?: string) => Promise<string>;
 };
 
 export async function buildApp(

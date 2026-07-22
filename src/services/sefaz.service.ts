@@ -4,6 +4,7 @@ import {
   getRecepcaoConfig,
   type TipoEventoManifestacao,
 } from '../config/sefaz-client.js';
+import { getDefaultCnpj, normalizarCnpj } from '../config/tenants.js';
 import { mapSefazResult, SefazApiError } from '../errors/sefaz-errors.js';
 
 type DocZip = {
@@ -18,20 +19,32 @@ type DistribuicaoResultado = Awaited<
 
 const EVENTO_MANIFESTACAO_OK = new Set(['135', '136', '573', '631', '655']);
 
-let distribuicao: DistribuicaoNFe | undefined;
-let recepcao: RecepcaoEvento | undefined;
+const distribuicaoPorCnpj = new Map<string, DistribuicaoNFe>();
+const recepcaoPorCnpj = new Map<string, RecepcaoEvento>();
 
-function getDistribuicao(): DistribuicaoNFe {
+function resolveCnpj(cnpj?: string): string {
+  return cnpj ? normalizarCnpj(cnpj) : getDefaultCnpj();
+}
+
+function getDistribuicao(cnpj?: string): DistribuicaoNFe {
+  const cnpjResolvido = resolveCnpj(cnpj);
+  let distribuicao = distribuicaoPorCnpj.get(cnpjResolvido);
+
   if (!distribuicao) {
-    distribuicao = new DistribuicaoNFe(getDistribuicaoConfig());
+    distribuicao = new DistribuicaoNFe(getDistribuicaoConfig(cnpjResolvido));
+    distribuicaoPorCnpj.set(cnpjResolvido, distribuicao);
   }
 
   return distribuicao;
 }
 
-function getRecepcao(): RecepcaoEvento {
+function getRecepcao(cnpj?: string): RecepcaoEvento {
+  const cnpjResolvido = resolveCnpj(cnpj);
+  let recepcao = recepcaoPorCnpj.get(cnpjResolvido);
+
   if (!recepcao) {
-    recepcao = new RecepcaoEvento(getRecepcaoConfig());
+    recepcao = new RecepcaoEvento(getRecepcaoConfig(cnpjResolvido));
+    recepcaoPorCnpj.set(cnpjResolvido, recepcao);
   }
 
   return recepcao;
@@ -119,6 +132,7 @@ export async function manifestarNfe(
   chave: string,
   tipoEvento: TipoEventoManifestacao = 210210,
   justificativa?: string,
+  cnpj?: string,
 ): Promise<void> {
   if (tipoEvento === 210240 && !justificativa) {
     throw new SefazApiError(
@@ -131,7 +145,7 @@ export async function manifestarNfe(
   let resultado;
 
   try {
-    resultado = await getRecepcao().enviarEvento({
+    resultado = await getRecepcao(cnpj).enviarEvento({
       lote: [
         {
           chNFe: chave,
@@ -180,9 +194,13 @@ export async function manifestarNfe(
   }
 }
 
-async function obterXmlDistribuicao(chave: string, nsu?: string): Promise<string> {
+async function obterXmlDistribuicao(
+  chave: string,
+  nsu: string | undefined,
+  cnpj?: string,
+): Promise<string> {
   const porChave = await consultarDistribuicao(() =>
-    getDistribuicao().consultaChNFe(chave),
+    getDistribuicao(cnpj).consultaChNFe(chave),
   );
 
   const { cStat, xMotivo } = porChave.data ?? {};
@@ -194,7 +212,7 @@ async function obterXmlDistribuicao(chave: string, nsu?: string): Promise<string
 
   if (nsu) {
     const porNsu = await consultarDistribuicao(() =>
-      getDistribuicao().consultaNSU(nsu),
+      getDistribuicao(cnpj).consultaNSU(nsu),
     );
     const { cStat: cStatNsu, xMotivo: xMotivoNsu } = porNsu.data ?? {};
     const docNsu = extrairDocumento(porNsu);
@@ -216,9 +234,12 @@ async function obterXmlDistribuicao(chave: string, nsu?: string): Promise<string
   return extrairXmlProcNfe(cStat, xMotivo, docChave);
 }
 
-export async function consultarNfePorChave(chave: string): Promise<string> {
+export async function consultarNfePorChave(
+  chave: string,
+  cnpj?: string,
+): Promise<string> {
   const primeiraConsulta = await consultarDistribuicao(() =>
-    getDistribuicao().consultaChNFe(chave),
+    getDistribuicao(cnpj).consultaChNFe(chave),
   );
 
   const { cStat, xMotivo } = primeiraConsulta.data ?? {};
@@ -232,7 +253,7 @@ export async function consultarNfePorChave(chave: string): Promise<string> {
     return extrairXmlProcNfe(cStat, xMotivo, primeiroDoc);
   }
 
-  await manifestarNfe(chave, 210210);
+  await manifestarNfe(chave, 210210, undefined, cnpj);
 
-  return obterXmlDistribuicao(chave, primeiroDoc?.nsu);
+  return obterXmlDistribuicao(chave, primeiroDoc?.nsu, cnpj);
 }

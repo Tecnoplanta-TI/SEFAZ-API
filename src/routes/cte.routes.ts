@@ -6,14 +6,16 @@ import {
   obterModeloChave,
   validarChaveDocumento,
 } from '../utils/chave.js';
+import { resolverCnpjRequest } from '../utils/cnpj-request.js';
 import { extrairXmlPostingDate } from '../utils/xml-nfe.js';
 
 type ConsultaBody = {
   chave: string;
+  cnpj?: string;
 };
 
 type CteRouteDeps = {
-  consultarCte?: (chave: string) => Promise<string>;
+  consultarCte?: (chave: string, cnpj?: string) => Promise<string>;
 };
 
 function validarChaveCteRequest(chave: unknown): string | { error: string } {
@@ -66,13 +68,23 @@ export async function cteRoutes(
       });
     }
 
+    const cnpjValidado = resolverCnpjRequest(request.body?.cnpj);
+
+    if (typeof cnpjValidado !== 'string') {
+      return reply.status(400).send({
+        status: 'error',
+        message: cnpjValidado.error,
+      });
+    }
+
     try {
-      const xml = await consultar(chaveValidada);
+      const xml = await consultar(chaveValidada, cnpjValidado);
       const xmlPostingDate = extrairXmlPostingDate(xml) ?? null;
 
       return reply.send({
         status: 'ok',
         chave: chaveValidada,
+        cnpj: cnpjValidado,
         xml,
         xmlPostingDate,
       });

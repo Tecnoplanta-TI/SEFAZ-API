@@ -1,18 +1,11 @@
 import 'dotenv/config';
 import { DistribuicaoNFe } from '@vexta-systems/node-mde';
-import { loadCertBuffer } from '../src/config/cert.js';
-import { getEnv } from '../src/config/env.js';
+import { getDistribuicaoConfig } from '../src/config/sefaz-client.js';
 
 const chave = process.argv[2] ?? '29260113873377000105550010000406211435401137';
-const env = getEnv();
+const cnpj = process.argv[3];
 
-const distribuicao = new DistribuicaoNFe({
-  pfx: loadCertBuffer(),
-  passphrase: env.CERT_PASSPHRASE,
-  cnpj: env.CNPJ,
-  cUFAutor: env.CUF_AUTOR as '29',
-  tpAmb: env.TP_AMB,
-});
+const distribuicao = new DistribuicaoNFe(getDistribuicaoConfig(cnpj));
 
 const resultado = await distribuicao.consultaChNFe(chave.replace(/\D/g, ''));
 
