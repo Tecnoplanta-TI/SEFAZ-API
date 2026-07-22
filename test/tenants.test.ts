@@ -19,6 +19,7 @@ describe('tenants config', () => {
   });
 
   it('carrega múltiplos tenants de SEFAZ_TENANTS', () => {
+    delete process.env.SEFAZ_CNPJ_LIST;
     process.env.TP_AMB = '1';
     process.env.SEFAZ_TENANTS = JSON.stringify({
       '13873377000105': {
@@ -39,8 +40,25 @@ describe('tenants config', () => {
     assert.equal(getTenant('12.345.678/0001-99').cnpj, '12345678000199');
   });
 
+  it('carrega tenants via SEFAZ_CNPJ_LIST (recomendado na Vercel)', () => {
+    delete process.env.SEFAZ_TENANTS;
+    process.env.TP_AMB = '1';
+    process.env.SEFAZ_CNPJ_LIST = '94077518000177,10422537000101';
+    process.env.DEFAULT_CNPJ = '94077518000177';
+    process.env.CERT_BASE64_94077518000177 = 'YQ==';
+    process.env.CERT_PASSPHRASE_94077518000177 = 'senha-tfl';
+    process.env.CUF_AUTOR_94077518000177 = '43';
+    process.env.CERT_BASE64_10422537000101 = 'Yg==';
+    process.env.CERT_PASSPHRASE_10422537000101 = 'senha-emp';
+    process.env.CUF_AUTOR_10422537000101 = '43';
+
+    assert.equal(getDefaultCnpj(), '94077518000177');
+    assert.equal(getTenant('10422537000101').passphrase, 'senha-emp');
+  });
+
   it('mantém compatibilidade com variáveis legadas', () => {
     delete process.env.SEFAZ_TENANTS;
+    delete process.env.SEFAZ_CNPJ_LIST;
     delete process.env.DEFAULT_CNPJ;
     process.env.TP_AMB = '1';
     process.env.CNPJ = '13873377000105';

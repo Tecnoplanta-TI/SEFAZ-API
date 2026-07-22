@@ -28,10 +28,7 @@ export function validarCnpj(cnpj: string): boolean {
   return CNPJ_REGEX.test(normalizarCnpj(cnpj));
 }
 
-function parseTenantInput(
-  cnpj: string,
-  input: TenantInput,
-): SefazTenant {
+function parseTenantInput(cnpj: string, input: TenantInput): SefazTenant {
   const cnpjNormalizado = normalizarCnpj(cnpj);
 
   if (!validarCnpj(cnpjNormalizado)) {
@@ -83,13 +80,47 @@ function loadLegacyTenant(): Map<string, SefazTenant> {
   return new Map([[tenant.cnpj, tenant]]);
 }
 
+/**
+ * Formato recomendado na Vercel (evita JSON gigante):
+ * SEFAZ_CNPJ_LIST=94077518000177,10422537000101
+ * CERT_BASE64_94077518000177=...
+ * CERT_PASSPHRASE_94077518000177=...
+ * CUF_AUTOR_94077518000177=43
+ */
+function loadTenantsFromCnpjList(rawList: string): Map<string, SefazTenant> {
+  const cnpjs = rawList
+    .split(/[,\s]+/)
+    .map((item) => normalizarCnpj(item))
+    .filter(Boolean);
+
+  if (cnpjs.length === 0) {
+    throw new Error('SEFAZ_CNPJ_LIST está vazio.');
+  }
+
+  const tenants = new Map<string, SefazTenant>();
+
+  for (const cnpj of cnpjs) {
+    const tenant = parseTenantInput(cnpj, {
+      certBase64: optionalEnv(`CERT_BASE64_${cnpj}`),
+      certPath: optionalEnv(`CERT_PATH_${cnpj}`),
+      passphrase: optionalEnv(`CERT_PASSPHRASE_${cnpj}`),
+      cUFAutor: optionalEnv(`CUF_AUTOR_${cnpj}`) ?? optionalEnv('CUF_AUTOR'),
+    });
+    tenants.set(tenant.cnpj, tenant);
+  }
+
+  return tenants;
+}
+
 function loadTenantsFromJson(raw: string): Map<string, SefazTenant> {
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error('SEFAZ_TENANTS deve ser um JSON válido.');
+    throw new Error(
+      'SEFAZ_TENANTS deve ser um JSON válido. Se o valor sumiu na Vercel, o JSON provavelmente ultrapassou o limite de tamanho — use SEFAZ_CNPJ_LIST + CERT_BASE64_<CNPJ> por empresa.',
+    );
   }
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -123,17 +154,23 @@ function ensureTenantsLoaded(): void {
     return;
   }
 
+  const cnpjList = optionalEnv('SEFAZ_CNPJ_LIST');
   const tenantsJson = optionalEnv('SEFAZ_TENANTS');
-  cachedTenants = tenantsJson
-    ? loadTenantsFromJson(tenantsJson)
-    : loadLegacyTenant();
+
+  if (cnpjList) {
+    cachedTenants = loadTenantsFromCnpjList(cnpjList);
+  } else if (tenantsJson) {
+    cachedTenants = loadTenantsFromJson(tenantsJson);
+  } else {
+    cachedTenants = loadLegacyTenant();
+  }
 
   const defaultFromEnv = optionalEnv('DEFAULT_CNPJ');
   if (defaultFromEnv) {
     const normalized = normalizarCnpj(defaultFromEnv);
     if (!cachedTenants.has(normalized)) {
       throw new Error(
-        `DEFAULT_CNPJ (${normalized}) não existe em SEFAZ_TENANTS.`,
+        `DEFAULT_CNPJ (${normalized}) não está configurado nos tenants.`,
       );
     }
     cachedDefaultCnpj = normalized;
@@ -155,9 +192,7 @@ export function getDefaultCnpj(): string {
 export function getTenant(cnpj?: string): SefazTenant {
   ensureTenantsLoaded();
 
-  const cnpjNormalizado = cnpj
-    ? normalizarCnpj(cnpj)
-    : cachedDefaultCnpj!;
+  const cnpjNormalizado = cnpj ? normalizarCnpj(cnpj) : cachedDefaultCnpj!;
 
   const tenant = cachedTenants!.get(cnpjNormalizado);
 

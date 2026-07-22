@@ -4,3 +4,5 @@ dist/
 certs/
 *.pfx
 *.p12
+SEFAZ_TENANTS
+*-base64.txt
